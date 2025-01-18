@@ -132,20 +132,35 @@ pub fn extract_morphs(
     morph_indices.current.clear();
     uniform.current_buffer.clear();
 
+    let mut last_start = 0;
+
     for (entity, view_visibility, morph_weights) in &query {
         if !view_visibility.get() {
             continue;
         }
-        let start = uniform.current_buffer.len();
+        let current_buffer = &mut uniform.current_buffer;
+        let start = current_buffer.len();
         let weights = morph_weights.weights();
         let legal_weights = weights.iter().take(MAX_MORPH_WEIGHTS).copied();
-        uniform.current_buffer.extend(legal_weights);
+        let target = start + legal_weights.len();
+        current_buffer.extend(legal_weights);
+        if current_buffer.len() != target {
+            current_buffer.truncate(start);
+            continue;
+        }
+        last_start = last_start.max(start);
+
         add_to_alignment::<f32>(&mut uniform.current_buffer);
 
         let index = (start * size_of::<f32>()) as u32;
         morph_indices
             .current
             .insert(entity.into(), MorphIndex { index });
+    }
+
+    // Pad out the buffer to ensure that there's enough space for bindings
+    while uniform.current_buffer.len() - last_start < MAX_MORPH_WEIGHTS {
+        uniform.current_buffer.push(0.0);
     }
 }
 
