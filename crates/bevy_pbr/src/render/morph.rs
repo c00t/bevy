@@ -87,11 +87,12 @@ const fn can_align(step: usize, target: usize) -> bool {
     step % target == 0 || target % step == 0
 }
 
-const WGPU_MIN_ALIGN: usize = 1024;
+// It should be aligned with the max number of morph targets.
+const WEIGHT_BUFFER_MIN_ALIGN: usize = MAX_MORPH_WEIGHTS * size_of::<f32>();
 
 /// Align a [`RawBufferVec`] to `N` bytes by padding the end with `T::default()` values.
 fn add_to_alignment<T: NoUninit + Default>(buffer: &mut RawBufferVec<T>) {
-    let n = WGPU_MIN_ALIGN;
+    let n = WEIGHT_BUFFER_MIN_ALIGN;
     let t_size = size_of::<T>();
     if !can_align(n, t_size) {
         // This panic is stripped at compile time, due to n, t_size and can_align being const
