@@ -12,6 +12,12 @@ use bevy::{
     render::primitives::{Aabb, Sphere},
 };
 
+#[cfg(feature = "bevy_dev_tools")]
+use bevy::{
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    text::{FontSmoothing, LineHeight},
+};
+
 #[path = "../../helpers/camera_controller.rs"]
 mod camera_controller;
 
@@ -42,6 +48,23 @@ fn main() {
         CameraControllerPlugin,
         SceneViewerPlugin,
         MorphViewerPlugin,
+        #[cfg(feature = "bevy_dev_tools")]
+        FpsOverlayPlugin {
+            config: FpsOverlayConfig {
+                text_config: TextFont {
+                    // Here we define size of our overlay
+                    font_size: 42.0,
+                    // If we want, we can use a custom font
+                    font: default(),
+                    // We could also disable font smoothing,
+                    font_smoothing: FontSmoothing::default(),
+                    line_height: LineHeight::default(),
+                },
+                // We can also change color of the overlay
+                text_color: Color::srgb(0.0, 1.0, 0.0),
+                enabled: true,
+            },
+        },
     ))
     .add_systems(Startup, (setup,).chain())
     .add_systems(PreUpdate, setup_scene_after_load);
