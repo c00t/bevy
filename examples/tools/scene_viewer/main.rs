@@ -8,6 +8,7 @@
 //! If you want to hot reload asset changes, enable the `file_watcher` cargo feature.
 
 use bevy::{
+    log::tracing,
     prelude::*,
     render::primitives::{Aabb, Sphere},
 };
@@ -26,6 +27,7 @@ mod animation_plugin;
 mod morph_viewer_plugin;
 mod scene_viewer_plugin;
 
+use bevy_render::view::VisibilityRange;
 use camera_controller::{CameraController, CameraControllerPlugin};
 use morph_viewer_plugin::MorphViewerPlugin;
 use scene_viewer_plugin::{SceneHandle, SceneViewerPlugin};
@@ -67,7 +69,8 @@ fn main() {
         },
     ))
     .add_systems(Startup, (setup,).chain())
-    .add_systems(PreUpdate, setup_scene_after_load);
+    .add_systems(PreUpdate, setup_scene_after_load)
+    .add_systems(PostUpdate, debug_visibility);
 
     #[cfg(feature = "animation")]
     app.add_plugins(animation_plugin::AnimationManipulationPlugin);
@@ -111,6 +114,7 @@ fn setup_scene_after_load(
         *setup = true;
         // Find an approximate bounding box of the scene from its meshes
         if meshes.iter().any(|(_, maybe_aabb)| maybe_aabb.is_none()) {
+            info!("meshes don't have aabb");
             return;
         }
 
@@ -148,6 +152,11 @@ fn setup_scene_after_load(
         info!("{}", camera_controller);
         info!("{}", *scene_handle);
 
+        info!(
+            "camera position: {}, look at: {}",
+            Vec3::from(aabb.center) + size * Vec3::new(0.5, 0.25, 0.5),
+            Vec3::from(aabb.center)
+        );
         commands.spawn((
             Camera3d::default(),
             Projection::from(projection),
@@ -178,5 +187,18 @@ fn setup_scene_after_load(
 
             scene_handle.has_light = true;
         }
+    }
+}
+
+// Add this to your system to monitor visibility changes
+fn debug_visibility(
+    query: Query<(Entity, &ViewVisibility, &VisibilityRange), Changed<ViewVisibility>>,
+) {
+    for (entity, visibility, range) in &query {
+        println!(
+            "Entity {:?} visibility changed: {:?}",
+            entity,
+            visibility.get()
+        );
     }
 }

@@ -4,7 +4,14 @@
 //! - Insert an initialized `SceneHandle` resource into your App's `AssetServer`.
 
 use bevy::{
-    gltf::Gltf, input::common_conditions::input_just_pressed, prelude::*, scene::InstanceId,
+    gltf::Gltf,
+    input::common_conditions::input_just_pressed,
+    prelude::*,
+    scene::{InstanceId, SceneInstance, SceneInstanceReady},
+};
+use bevy_render::{
+    primitives::Aabb,
+    view::{NoCpuCulling, NoFrustumCulling},
 };
 
 use std::{f32::consts::*, fmt};
@@ -71,6 +78,7 @@ impl Plugin for SceneViewerPlugin {
                 (
                     update_lights,
                     camera_tracker,
+                    // show_visibility_sphere,
                     toggle_bounding_boxes.run_if(input_just_pressed(KeyCode::KeyB)),
                 ),
             );
@@ -81,12 +89,26 @@ fn toggle_bounding_boxes(mut config: ResMut<GizmoConfigStore>) {
     config.config_mut::<AabbGizmoConfigGroup>().1.draw_all ^= true;
 }
 
+fn show_visibility_sphere(mut gizmos: Gizmos, query: Query<(&GlobalTransform, &Aabb)>) {
+    for (transform, aabb) in &query {
+        let world_from_local = transform.affine();
+
+        // Draw the sphere with semi-transparent blue
+        gizmos.sphere(
+            world_from_local.transform_point3a(aabb.center),
+            transform.radius_vec3a(aabb.half_extents),
+            Color::srgba(0.0, 0.0, 1.0, 0.7),
+        );
+    }
+}
+
 fn scene_load_check(
     asset_server: Res<AssetServer>,
     mut scenes: ResMut<Assets<Scene>>,
     gltf_assets: Res<Assets<Gltf>>,
     mut scene_handle: ResMut<SceneHandle>,
     mut scene_spawner: ResMut<SceneSpawner>,
+    mut commands: Commands,
 ) {
     match scene_handle.instance_id {
         None => {
@@ -125,8 +147,27 @@ fn scene_load_check(
                             maybe_directional_light.is_some() || maybe_point_light.is_some()
                         });
 
-                scene_handle.instance_id =
-                    Some(scene_spawner.spawn(gltf_scene_handle.clone_weak()));
+                let parent = commands
+                    .spawn(SceneRoot(gltf_scene_handle.clone_weak()))
+                    .id();
+                commands.entity(parent).observe(
+                    |trigger: Trigger<SceneInstanceReady>,
+                     mut scene_handle: ResMut<SceneHandle>,
+                     scene_spawner: ResMut<SceneSpawner>,
+                     mut commands: Commands| {
+                        info!("SceneInstanceReady: {:?}", trigger.instance_id);
+                        scene_handle.instance_id = Some(trigger.instance_id);
+                        // let target = trigger.target();
+                        // flatten children
+                        let children = scene_spawner.iter_instance_entities(trigger.instance_id);
+                        for child in children {
+                            commands
+                                .entity(child)
+                                .insert((NoCpuCulling, NoFrustumCulling));
+                            info!("Add no culling to child: {:?}", child);
+                        }
+                    },
+                );
 
                 info!("Spawning scene...");
             }
