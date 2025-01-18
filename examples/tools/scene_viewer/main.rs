@@ -43,7 +43,7 @@ fn main() {
         SceneViewerPlugin,
         MorphViewerPlugin,
     ))
-    .add_systems(Startup, setup)
+    .add_systems(Startup, (setup,).chain())
     .add_systems(PreUpdate, setup_scene_after_load);
 
     #[cfg(feature = "animation")]
@@ -70,7 +70,7 @@ fn parse_scene(scene_path: String) -> (String, usize) {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let scene_path = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "assets/models/FlightHelmet/FlightHelmet.gltf".to_string());
+        .unwrap_or_else(|| "assets/models/animated/MorphStressTest.gltf".to_string());
     info!("Loading {}", scene_path);
     let (file_path, scene_index) = parse_scene(scene_path);
 
@@ -114,10 +114,10 @@ fn setup_scene_after_load(
         let mut projection = PerspectiveProjection::default();
         projection.far = projection.far.max(size * 10.0);
 
-        let walk_speed = size * 3.0;
+        let walk_speed = size * 0.1;
         let camera_controller = CameraController {
             walk_speed,
-            run_speed: 3.0 * walk_speed,
+            run_speed: 0.1 * walk_speed,
             ..default()
         };
 

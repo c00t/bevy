@@ -50,8 +50,16 @@ pub struct MorphUniforms {
 impl Default for MorphUniforms {
     fn default() -> Self {
         Self {
-            current_buffer: RawBufferVec::new(BufferUsages::UNIFORM),
-            prev_buffer: RawBufferVec::new(BufferUsages::UNIFORM),
+            current_buffer: {
+                let mut buffer = RawBufferVec::new(BufferUsages::UNIFORM);
+                buffer.set_label(Some("MorphUniforms::current_buffer"));
+                buffer
+            },
+            prev_buffer: {
+                let mut buffer = RawBufferVec::new(BufferUsages::UNIFORM);
+                buffer.set_label(Some("MorphUniforms::prev_buffer"));
+                buffer
+            },
         }
     }
 }
@@ -64,6 +72,7 @@ pub fn prepare_morphs(
     if uniform.current_buffer.is_empty() {
         return;
     }
+    // dbg!(uniform.current_buffer.len());
     let len = uniform.current_buffer.len();
     uniform.current_buffer.reserve(len, &render_device);
     uniform
@@ -78,7 +87,7 @@ const fn can_align(step: usize, target: usize) -> bool {
     step % target == 0 || target % step == 0
 }
 
-const WGPU_MIN_ALIGN: usize = 256;
+const WGPU_MIN_ALIGN: usize = 1024;
 
 /// Align a [`RawBufferVec`] to `N` bytes by padding the end with `T::default()` values.
 fn add_to_alignment<T: NoUninit + Default>(buffer: &mut RawBufferVec<T>) {
@@ -118,6 +127,7 @@ pub fn extract_morphs(
     // purposes of motion vector computation.
     mem::swap(&mut morph_indices.current, &mut morph_indices.prev);
     mem::swap(&mut uniform.current_buffer, &mut uniform.prev_buffer);
+    // dbg!(uniform.current_buffer.len());
     morph_indices.current.clear();
     uniform.current_buffer.clear();
 

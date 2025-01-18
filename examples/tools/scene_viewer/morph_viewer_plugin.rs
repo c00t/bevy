@@ -9,7 +9,8 @@
 //! Also illustrates how to read morph target names in [`detect_morphs`].
 
 use crate::scene_viewer_plugin::SceneHandle;
-use bevy::prelude::*;
+use bevy::{log::tracing, prelude::*};
+use bevy_render::renderer::RenderDevice;
 use std::fmt;
 
 const FONT_SIZE: f32 = 13.0;
@@ -239,6 +240,7 @@ fn detect_morphs(
     morphs: Query<(Entity, &MorphWeights, Option<&Name>)>,
     meshes: Res<Assets<Mesh>>,
     scene_handle: Res<SceneHandle>,
+    render_device: Res<RenderDevice>,
     mut setup: Local<bool>,
 ) {
     let no_morphing = morphs.iter().len() == 0;
@@ -251,22 +253,32 @@ fn detect_morphs(
         return;
     }
     let mut detected = Vec::new();
-
+    let limits = render_device.limits();
+    let max_3d = limits.max_texture_dimension_3d;
+    dbg!(max_3d);
     for (entity, weights, name) in &morphs {
         let target_names = weights
             .first_mesh()
             .and_then(|h| meshes.get(h))
             .and_then(|m| m.morph_target_names());
         let targets = Target::new(name, weights.weights(), target_names, entity);
-        detected.extend(targets);
+        tracing::info!("name: {:?}, target_names: {:?}", name, target_names);
+        // only add morph targets of "Face" into detached morph targets
+        if name.is_some() && name.unwrap().contains("Face") {
+            detected.extend(targets);
+        }
     }
+    let total_morphs = detected.len();
     detected.truncate(AVAILABLE_KEYS.len());
     let style = TextFont {
         font_size: FONT_SIZE,
         ..default()
     };
     let mut spans = vec![
-        (TextSpan::new("Morph Target Controls\n"), style.clone()),
+        (
+            TextSpan::new(format!("Morph Target Controls(number:{})\n", total_morphs)),
+            style.clone(),
+        ),
         (TextSpan::new("---------------\n"), style.clone()),
     ];
     let target_to_text =

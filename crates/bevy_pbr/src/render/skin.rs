@@ -90,8 +90,16 @@ impl FromWorld for SkinUniforms {
         };
 
         Self {
-            current_buffer: RawBufferVec::new(buffer_usages),
-            prev_buffer: RawBufferVec::new(buffer_usages),
+            current_buffer: {
+                let mut buffer = RawBufferVec::new(buffer_usages);
+                buffer.set_label(Some("SkinUniforms::current_buffer"));
+                buffer
+            },
+            prev_buffer: {
+                let mut buffer = RawBufferVec::new(buffer_usages);
+                buffer.set_label(Some("SkinUniforms::prev_buffer"));
+                buffer
+            },
         }
     }
 }

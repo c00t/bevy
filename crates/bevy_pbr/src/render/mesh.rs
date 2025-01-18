@@ -1077,7 +1077,11 @@ impl MeshCullingData {
 impl Default for MeshCullingDataBuffer {
     #[inline]
     fn default() -> Self {
-        Self(RawBufferVec::new(BufferUsages::STORAGE))
+        Self({
+            let mut buffer = RawBufferVec::new(BufferUsages::STORAGE);
+            buffer.set_label(Some("MeshCullingDataBuffer"));
+            buffer
+        })
     }
 }
 
